@@ -7,8 +7,8 @@ import path from 'node:path';
 const clientDistPath = path.resolve('client/dist'); // Should resolve to /var/task/client/dist
 
 const app    = express();
-const server = http.createServer(app);
-const io     = new Server(server,{
+const server = http.createServer(app); // Create HTTP server wrapping the Express app
+const io     = new Server(server,{ // Attach Socket.IO to the HTTP server instance
     cors: {
         origin: "*", // Allow all origins for simplicity, restrict in production
         methods: ["GET","POST"]
@@ -32,10 +32,16 @@ app.use(express.static(clientDistPath));
 
 // SPA fallback: Send 'index.html' for non-file, non-API requests
 app.get('*',(req,res)=>{
-    // Exclude socket.io path explicitly
+    // Exclude socket.io path explicitly - Socket.IO handles its own routes via the http server
     if (req.path.startsWith('/socket.io')) {
-        // Let socket.io handle its own requests
-        return; // Do nothing more for socket.io paths
+        // Let the http.Server handle this request for Socket.IO
+        // No need to call next() or return; the server handles it directly.
+        // We just need to make sure this Express route doesn't interfere.
+        console.log(`Skipping SPA fallback for Socket.IO path: ${req.path}`);
+        // It's crucial that Socket.IO is attached to the 'server' instance BEFORE this route handler.
+        // Since it is, the underlying http server will route /socket.io/ requests correctly.
+        // We don't explicitly call next() because we don't want Express to process it further.
+        return;
     }
 
     // Check if it looks like an SPA route (no extension or root)
@@ -56,7 +62,7 @@ app.get('*',(req,res)=>{
         // If it has an extension but wasn't served by express.static,
         // let it 404. Check if headers already sent.
         if (!res.headersSent) {
-             console.log(`Sending 404 for path: ${req.path}`); // Add logging
+             console.log(`Sending 404 for static asset path: ${req.path}`); // Add logging
              res.status(404).send('Not Found');
         }
     }
@@ -66,4 +72,5 @@ app.get('*',(req,res)=>{
 /* ─── Server Start (Vercel uses the export) ────────── */
 // No server.listen() here for Vercel deployment
 
-export default app; // Export the Express app for Vercel
+// Export the http.Server instance instead of the Express app
+export default server;
