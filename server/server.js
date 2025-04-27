@@ -489,50 +489,12 @@ io.on('connection', socket => {
 });
 
 
-/* ── static & SPA fallback ─────────────────────────── */
+// ── static files ─────────────────────────────────────
+app.use(express.static(clientDistPath));   // js / css / vite.svg …
 
-// Serve static files from the client build directory
-// This should handle requests for .js, .css, .svg, .html etc. found in client/dist
-app.use(express.static(clientDistPath));
-
-// API routes would go here, BEFORE the fallback
-// app.get('/api/...', ...);
-
-// SPA fallback: Send 'index.html' for requests that weren't handled above
-// This should only catch requests for SPA routes (e.g., /session/abc)
-// It should NOT catch /socket.io/ paths (handled by Socket.IO directly)
-// or valid static file paths (handled by express.static)
-app.get('*', (req, res) => {
-    // If the request reaches here, it means it wasn't a static file
-    // and hopefully not a /socket.io/ request (which Socket.IO should have handled).
-    // Assume it's an SPA route.
-
-    // Log unexpected socket.io requests reaching here
-    if (req.path.startsWith('/socket.io/')) {
-         console.warn(`SPA fallback received unexpected Socket.IO path: ${req.path}`);
-         // Send 404 as Express shouldn't handle this
-         if (!res.headersSent) {
-            res.status(404).send('Not Found (Socket.IO path)');
-         }
-         return;
-    }
-
-    // Send the main index.html for SPA routing
-    const indexPath = path.join(clientDistPath, 'index.html');
-    console.log(`Attempting to send SPA fallback for path ${req.path}: ${indexPath}`);
-    res.sendFile(indexPath, (err) => {
-        if (err) {
-            // Log error if index.html itself is missing or unreadable
-            console.error(`Error sending index.html from ${indexPath}:`, err);
-            if (!res.headersSent) {
-                if (err.code === 'ENOENT') {
-                    res.status(404).send(`Not Found - ${indexPath} missing`);
-                } else {
-                    res.status(500).send("Internal Server Error");
-                }
-            }
-        }
-    });
+// ── SPA fallback (must NOT catch /socket.io/*) ───────
+app.get(/^\/(?!socket\.io).*/, (req, res) => {
+  res.sendFile(path.join(clientDistPath, 'index.html'));
 });
 
 
