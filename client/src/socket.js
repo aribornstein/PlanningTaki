@@ -1,9 +1,6 @@
 import { io } from 'socket.io-client';
 
-// connect with WebSocket only – no polling fallback
-const socket = io({
-  transports: ['websocket'],
-  upgrade: false          // skip initial polling probe
-});
+const URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3000'; // Use env var with fallback
+const socket = io(URL, { autoConnect: false });
 
 export default socket;
