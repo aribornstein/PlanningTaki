@@ -55,8 +55,11 @@ export const useSession = defineStore('session', {
     reprBallot(c) { if (this.session) socket.emit('reprBallot', c); },
     accept() { if (this.session) socket.emit('accept'); },
     dispute() { if (this.session) socket.emit('dispute'); },
-    revote() { if (this.session) socket.emit('revote'); }
-    // Add doneRepr if needed:
-    // doneRepr() { if (this.session) socket.emit('doneRepr'); }
+    revote() { if (this.session) socket.emit('revote'); },
+    // Add actions for reprioritization adjustment phase
+    proposeTaskRemoval(taskId) { if (this.session) socket.emit('proposeTaskRemoval', taskId); },
+    doneRepr() { if (this.session) socket.emit('doneRepr'); },
+    confirmTaskRemoval() { if (this.session) socket.emit('confirmTaskRemoval'); },
+    cancelReprioritization() { if (this.session) socket.emit('cancelReprioritization'); }
   }
 });

@@ -1,7 +1,7 @@
 <template>
   <div v-if="!s">Connecting to session...</div>
   <div v-else class="session-view">
-    <h2>Session {{ s.id }}</h2>
+    <h2>Planning Taki Session {{ s.id }}</h2>
     <p><strong>Your Name:</strong> {{ me?.name }} (Budget: {{ me?.budget }})</p>
     <hr>
 
@@ -92,7 +92,7 @@
     <section v-if="s.phase === 'reveal'" class="reveal-phase">
        <h3>Phase: Reveal Votes ✨</h3>
        <h4>Task: {{ s.currentTask?.title }}</h4>
-       <p>Final Estimate (Highest Vote): {{ s.currentTask?.points }}</p>
+       <p>Final Estimate (Majority Vote): {{ s.currentTask?.points }}</p>
        <ul><li v-for="p in players" :key="p.id">{{ p.name }}: {{ p.vote }}</li></ul>
        <div v-if="isOwner" class="owner-actions">
          <button @click="accept">Accept Estimate ({{ s.currentTask?.points }} points)</button>
@@ -114,11 +114,37 @@
     <!-- REPRIORITIZATION ADJUSTMENT PHASE -->
     <section v-if="s.phase === 'repr'" class="repr-phase">
        <h3>Phase: Adjust Tasks 🔄</h3>
-       <h4>Task: {{ s.currentTask?.title }}</h4>
-       <p>Reprioritization approved. Review owner's tasks to free up points.</p>
-       <!-- TODO: Implement UI for viewing/adjusting owner's tasks -->
-       <p><i>Manual task adjustment UI not implemented.</i></p>
-       <button @click="doneRepr">Finish Adjustment & Resume Voting</button> <!-- Need doneRepr action -->
+       <h4>Task Being Estimated: {{ s.currentTask?.title }}</h4>
+       <p>Reprioritization approved. Owner ({{ players.find(p => p.id === s.currentTask?.owner)?.name }}) can propose removing a previously budgeted task to free up points.</p>
+
+       <div v-if="isOwner">
+         <h4>Your Budgeted Tasks:</h4>
+         <ul v-if="playerBudgetedTasks[me.id] && playerBudgetedTasks[me.id].length > 0">
+           <li v-for="task in playerBudgetedTasks[me.id]" :key="task.id" class="budgeted-task-item adjustable-task">
+             <span>- {{ task.title }} ({{ task.points }} points)</span>
+             <button @click="proposeTaskRemoval(task.id)" class="propose-removal-button">Propose Removal</button>
+           </li>
+         </ul>
+         <p v-else><i>You have no budgeted tasks to remove.</i></p>
+         <hr>
+         <button @click="doneRepr">Finish Adjustment & Resume Voting</button>
+       </div>
+       <p v-else><i>Waiting for owner to review budgeted tasks...</i></p>
+    </section>
+
+    <!-- REPRIORITIZATION DISCUSSION PHASE -->
+    <section v-if="s.phase === 'reprDiscuss'" class="repr-discuss-phase">
+        <h3>Phase: Discuss Task Removal 🤔💬</h3>
+        <h4>Task Being Estimated: {{ s.currentTask?.title }}</h4>
+        <p>Owner proposed removing the following task to free up points:</p>
+        <p><strong>Task to Remove:</strong> {{ s.tasks.find(t => t.id === s.taskToReprioritizeId)?.title }} ({{ s.tasks.find(t => t.id === s.taskToReprioritizeId)?.points }} points)</p>
+        <p>Discuss for 1 minute.</p>
+        <p>⏱️ Time Remaining: {{ countdown }}</p>
+        <div v-if="isOwner">
+            <button @click="confirmTaskRemoval" class="confirm-removal-button">Confirm Removal & Resume Voting</button>
+            <button @click="cancelReprioritization" class="cancel-repr-button">Keep Task & Abandon Current Estimation</button>
+        </div>
+        <p v-else><i>Waiting for owner decision after discussion...</i></p>
     </section>
 
   </div>
@@ -198,15 +224,20 @@ function repr(c) { store.reprBallot(c); }
 function accept() { store.accept(); }
 function dispute() { store.dispute(); }
 function revote() { store.revote(); }
-// TODO: Add doneRepr action if implementing repr UI
-// function doneRepr() { store.doneRepr(); }
+// Add new actions for reprioritization adjustment
+function proposeTaskRemoval(taskId) { store.proposeTaskRemoval(taskId); }
+function doneRepr() { store.doneRepr(); }
+function confirmTaskRemoval() { store.confirmTaskRemoval(); }
+function cancelReprioritization() { store.cancelReprioritization(); }
+
 
 // --- Countdown Timer ---
 const countdown = ref('');
 let intervalId = null;
 
 function updateCountdown() {
-  if (!s.value?.timer || (s.value.phase !== 'explain' && s.value.phase !== 'discuss')) {
+  // Include 'reprDiscuss' in phases that use the timer
+  if (!s.value?.timer || (s.value.phase !== 'explain' && s.value.phase !== 'discuss' && s.value.phase !== 'reprDiscuss')) {
     countdown.value = '';
     if (intervalId) clearInterval(intervalId);
     intervalId = null;
@@ -374,5 +405,31 @@ input[type="text"], input[type="number"] {
 .owner-actions button:last-of-type {
    background-color: #fee2e2;
    border-color: #fca5a5;
+}
+.adjustable-task {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #fff; /* Add background for clarity */
+  padding: 8px; /* Add padding */
+  border: 1px solid #eee; /* Add border */
+  margin-bottom: 5px; /* Add margin */
+}
+.propose-removal-button {
+  background-color: #fffbe6;
+  border-color: #ffe58f;
+  font-size: 0.9em;
+  padding: 4px 8px;
+}
+.confirm-removal-button {
+  background-color: #dcfce7; /* Green */
+  border-color: #86efac;
+}
+.cancel-repr-button {
+  background-color: #fee2e2; /* Red */
+  border-color: #fca5a5;
+}
+.repr-discuss-phase strong {
+    color: #b91c1c; /* Dark red for emphasis */
 }
 </style>

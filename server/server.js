@@ -16,7 +16,8 @@ const fibonacci = [0,1,2,3,5,8,13,21,34];
 const sessions  = {};           // id → Session
 
 function createSession(id){ return sessions[id] = {
-  id, phase:'lobby', players:{}, tasks:[], currentTask:null, reprVote:null, timer: null // Ensure timer exists
+  id, phase:'lobby', players:{}, tasks:[], currentTask:null,
+  reprVote:null, timer: null, taskToReprioritizeId: null // Add taskToReprioritizeId
 };}
 
 /* ── helpers ───────────────────────────────────────── */
@@ -157,8 +158,27 @@ io.on('connection', socket=>{
     // Check if everyone has voted
     if(every(s.players, x => x.vote !== null)){
       s.phase='reveal';
-      // Calculate estimate (highest vote)
-      t.points = Math.max(0, ...Object.values(s.players).map(x=>x.vote)); // Ensure points >= 0
+      // Calculate estimate based on majority vote, tie-breaking with lower score
+      const votes = Object.values(s.players).map(x => x.vote);
+      const voteCounts = votes.reduce((acc, vote) => {
+        acc[vote] = (acc[vote] || 0) + 1;
+        return acc;
+      }, {});
+
+      let maxCount = 0;
+      let majorityVotes = [];
+      for (const vote in voteCounts) {
+        if (voteCounts[vote] > maxCount) {
+          maxCount = voteCounts[vote];
+          majorityVotes = [parseInt(vote)]; // Start new list of majority votes
+        } else if (voteCounts[vote] === maxCount) {
+          majorityVotes.push(parseInt(vote)); // Add to tied majority votes
+        }
+      }
+
+      // If there's a tie for majority, pick the lowest score among them
+      t.points = Math.min(...majorityVotes);
+
       broadcast(currentSession);
     } else {
       // Broadcast intermediate state showing who has voted (but not the value yet)
@@ -201,7 +221,8 @@ io.on('connection', socket=>{
     if(Object.keys(s.reprVote.voters).length === Object.keys(s.players).length){
       if(s.reprVote.yes > s.reprVote.no){
           s.phase='repr'; // Go to adjustment phase
-          // TODO: Implement logic/UI for task adjustment here or on client
+          // Clear timer from previous phase if any
+          s.timer = null;
       } else {
           s.phase='vote'; // Go back to voting
       }
@@ -213,15 +234,98 @@ io.on('connection', socket=>{
     }
   });
 
-  // Add handler for when reprioritization adjustment is done (if manual)
+  // Handler for owner proposing a task removal during 'repr' phase
+  socket.on('proposeTaskRemoval', (taskIdToRemove) => {
+      const s = getSession(socket, currentSession, 'proposeTaskRemoval');
+      // Only owner of currentTask in 'repr' phase can trigger this
+      if (!s || s.phase !== 'repr' || !s.currentTask || s.currentTask.owner !== socket.id) return;
+
+      const taskToRemove = s.tasks.find(t => t.id === taskIdToRemove);
+      const owner = s.players[socket.id];
+
+      // Validate task exists, belongs to owner, and has points assigned
+      if (!taskToRemove || taskToRemove.owner !== socket.id || taskToRemove.points == null) {
+          console.warn(`Invalid task removal proposal by ${socket.id} for task ${taskIdToRemove}`);
+          // Optionally emit error: socket.emit('reprError', 'Invalid task selected for removal.');
+          return;
+      }
+
+      s.phase = 'reprDiscuss';
+      s.taskToReprioritizeId = taskIdToRemove;
+      s.timer = Date.now() + 60000; // 1 min discussion timer
+      broadcast(currentSession);
+  });
+
+
+  // Handler for owner finishing adjustment without removing a task
   socket.on('doneRepr', () => {
       const s = getSession(socket, currentSession, 'doneRepr');
-      if (!s || s.phase !== 'repr') return;
-      // TODO: Add validation if only specific users can trigger this
+      // Only owner of currentTask in 'repr' phase can trigger this
+      if (!s || s.phase !== 'repr' || !s.currentTask || s.currentTask.owner !== socket.id) return;
 
       s.phase = 'vote'; // Go back to voting on the current task
       // Ensure votes are reset before revoting
       Object.values(s.players).forEach(p => p.vote = null);
+      s.timer = null; // Clear timer
+      broadcast(currentSession);
+  });
+
+  // Handler for owner confirming task removal after discussion
+  socket.on('confirmTaskRemoval', () => {
+      const s = getSession(socket, currentSession, 'confirmTaskRemoval');
+      // Only owner of currentTask in 'reprDiscuss' phase can trigger this
+      if (!s || s.phase !== 'reprDiscuss' || !s.currentTask || s.currentTask.owner !== socket.id || !s.taskToReprioritizeId) return;
+
+      const taskToRemove = s.tasks.find(t => t.id === s.taskToReprioritizeId);
+      const owner = s.players[socket.id];
+
+      if (!taskToRemove || !owner) {
+          console.error(`Error confirming removal: Task ${s.taskToReprioritizeId} or Owner ${socket.id} not found.`);
+          // Potentially reset to a safe state like lobby
+          s.phase = 'lobby';
+          s.currentTask = null;
+          s.timer = null;
+          s.taskToReprioritizeId = null;
+          broadcast(currentSession);
+          return;
+      }
+
+      // Add points back to owner
+      owner.remaining += taskToRemove.points;
+      // Mark task as removed/reset (clear points and potentially owner)
+      taskToRemove.points = null;
+      // taskToRemove.owner = null; // Decide if owner should be cleared too
+      // Optionally add a status: taskToRemove.status = 'removed';
+
+      console.log(`Task ${taskToRemove.title} removed by ${owner.name}. Points ${taskToRemove.points} returned.`);
+
+      // Reset state for voting on the original currentTask
+      Object.values(s.players).forEach(p => p.vote = null);
+      s.phase = 'vote';
+      s.timer = null;
+      s.taskToReprioritizeId = null;
+      broadcast(currentSession);
+  });
+
+  // Handler for owner cancelling reprioritization and abandoning current task
+  socket.on('cancelReprioritization', () => {
+      const s = getSession(socket, currentSession, 'cancelReprioritization');
+       // Only owner of currentTask in 'reprDiscuss' phase can trigger this
+      if (!s || s.phase !== 'reprDiscuss' || !s.currentTask || s.currentTask.owner !== socket.id) return;
+
+      const abandonedTask = s.currentTask;
+      console.log(`Reprioritization cancelled by owner. Task ${abandonedTask.title} abandoned.`);
+
+      // Mark current task as abandoned (e.g., set points to -1 or add status)
+      // abandonedTask.points = -1; // Example: Mark as abandoned
+      abandonedTask.status = 'abandoned'; // Add a status field if preferred
+
+      // Reset state back to lobby
+      s.phase = 'lobby';
+      s.currentTask = null;
+      s.timer = null;
+      s.taskToReprioritizeId = null;
+      Object.values(s.players).forEach(p => p.vote = null); // Clear any lingering votes
       broadcast(currentSession);
   });
 
