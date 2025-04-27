@@ -38,7 +38,7 @@ Example:
 ---
 
 ## 4. Voting Phase
-- After explanation, **everyone votes** by selecting a Fibonacci card (0, 1, 2, 3, 5, 8, 13, 21, etc.).
+- After explanation, **everyone votes** by selecting a Fibonacci card (1, 2, 3, 5, 8, 13, 21, etc.).
 
 **Voting Rules:**
 - Players can **only pick estimates** **≤ owner's remaining Story Points**.

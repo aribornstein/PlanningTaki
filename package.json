@@ -1,0 +1,9 @@
+{
+  "name": "planning-taki",
+  "scripts": {
+    "build": "npm run build --prefix client",
+    "start": "node server/server.js"
+  },
+  "dependencies": {},
+  "private": true
+}

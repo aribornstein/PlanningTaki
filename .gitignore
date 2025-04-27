@@ -1,0 +1,32 @@
+# Node.js dependencies
+node_modules/
+
+# Build output (client)
+client/dist/
+
+# Environment variables
+.env*
+!.env.example
+
+# Log files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDE/Editor directories
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Vercel output
+.vercel/
