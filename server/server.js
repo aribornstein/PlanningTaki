@@ -3,8 +3,10 @@ import http from 'http';
 import { Server } from 'socket.io';
 import path from 'node:path'; // Ensure path is imported
 
-// Assume 'includeFiles' copies contents to the function root (/var/task)
-const clientDistPath = path.resolve('.');
+// Change clientDistPath back to resolve the nested directory
+// path.resolve('.') points to /var/task
+// path.resolve('client/dist') points to /var/task/client/dist
+const clientDistPath = path.resolve('client/dist');
 
 const app = express();
 const server = http.createServer(app); // Create server FROM the Express app
@@ -486,7 +488,7 @@ io.on('connection', socket => {
 
 
 // ── static files ─────────────────────────────────────
-// Serve static files from the function's root directory (/var/task)
+// Serve static files from the nested /var/task/client/dist directory
 app.use(express.static(clientDistPath));
 
 // ── SPA fallback ─────────────────────────────────────
@@ -494,20 +496,19 @@ app.use(express.static(clientDistPath));
 app.get(/^\/(?!socket\.io)(?!.*\.\w+($|\?)).*$/, (req, res, next) => {
   if (path.extname(req.path)) {
      console.warn(`Fallback caught potential static file request: ${req.path}`);
-     return next(); // Let it 404 if not found by express.static
+     return next();
   }
 
-  // Serve index.html from the function's root directory (/var/task)
-  const indexPath = path.join(clientDistPath, 'index.html'); // Should point to /var/task/index.html
+  // Serve index.html from the nested /var/task/client/dist directory
+  const indexPath = path.join(clientDistPath, 'index.html'); // Should now correctly point to /var/task/client/dist/index.html
   console.log(`Serving SPA fallback for path: ${req.path} -> ${indexPath}`);
   res.sendFile(indexPath, (err) => {
     if (err) {
-        // THIS IS THE CRITICAL ERROR POINT
         console.error(`Error sending index.html from ${indexPath}:`, err);
         if (!res.headersSent) {
             if (err.code === 'ENOENT') {
-                 // If this happens, the client build artifacts are NOT in /var/task
-                 res.status(404).send(`SPA Fallback Error: ${err.message}. Critical issue: Client build files not found in function bundle. Check Vercel build logs for 'vercel-build' script success and 'includeFiles' behavior.`);
+                 // If this happens AGAIN, something is fundamentally wrong with includeFiles
+                 res.status(404).send(`SPA Fallback Error: ${err.message}. File not found even at ${indexPath}. Check Vercel includeFiles behavior.`);
             } else {
                  res.status(500).send("Internal Server Error");
             }
