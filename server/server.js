@@ -3,8 +3,9 @@ import http from 'http';
 import { Server } from 'socket.io';
 import path from 'node:path'; // Ensure path is imported
 
-// Use path.resolve for Vercel compatibility
-const clientDistPath = path.resolve('client/dist');
+// Use path.resolve('.') to point to the function's root directory (/var/task)
+// where 'includeFiles' copies the client/dist contents.
+const clientDistPath = path.resolve('.');
 
 const app = express();
 const server = http.createServer(app); // Create server FROM the Express app
@@ -17,7 +18,7 @@ const io = new Server(server, {
 });
 
 /* ── in‑memory model & helpers (Keep as is) ──────── */
-const fibonacci = [0, 1, 2, 3, 5, 8, 13, 21, 34];
+const fibonacci = [1, 2, 3, 5, 8, 13, 21];
 const sessions = {};
 function createSession(id) { /* ... as before ... */
     return sessions[id] = {
@@ -487,7 +488,7 @@ io.on('connection', socket => {
 
 
 // ── static files ─────────────────────────────────────
-// Serve static files from client/dist first
+// Serve static files from the function's root directory
 app.use(express.static(clientDistPath)); // e.g., /assets/index-BBlsuepU.js
 
 // ── SPA fallback ─────────────────────────────────────
@@ -501,8 +502,8 @@ app.get(/^\/(?!socket\.io)(?!.*\.\w+($|\?)).*$/, (req, res, next) => {
      return next();
   }
 
-  // Otherwise, serve index.html for SPA routing
-  const indexPath = path.join(clientDistPath, 'index.html');
+  // Otherwise, serve index.html from the function's root directory
+  const indexPath = path.join(clientDistPath, 'index.html'); // Should now correctly point to /var/task/index.html
   console.log(`Serving SPA fallback for path: ${req.path} -> ${indexPath}`);
   res.sendFile(indexPath, (err) => {
     if (err) {
