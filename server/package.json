@@ -1,7 +1,7 @@
 {
   "type": "module",
   "scripts": {
-    "vercel-build": "echo '>>> Installing client dependencies...' && npm install --prefix ../client && echo '>>> Building client...' && npm run build --prefix ../client && echo '>>> Client build finished.'",
+    "vercel-build": "echo '>>> [vercel-build] Skipping client build for testing.'",
     "start": "node server.js"
   },
   "dependencies": {
