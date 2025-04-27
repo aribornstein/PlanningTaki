@@ -1,19 +1,15 @@
 import express from 'express';
 import http from 'http';
 import { Server } from 'socket.io';
-import path from 'node:path'; // Ensure path is imported
+import path from 'node:path';
 
-// Use path.resolve('.') to point to the function's root directory (/var/task)
-// where 'includeFiles' copies the client/dist contents.
-const clientDistPath = path.resolve('.');
+// This should now correctly point to /var/task/client/dist
+const clientDistPath = path.resolve('client/dist');
 
 const app = express();
-const server = http.createServer(app); // Create server FROM the Express app
-
-// Initialize Socket.IO with the http server instance
-// Socket.IO will automatically handle requests to '/socket.io/'
+const server = http.createServer(app);
 const io = new Server(server, {
-  transports: ['websocket'],        // ← force WS only
+  transports: ['websocket'],
   cors: { origin: '*', methods: ['GET','POST'] }
 });
 
@@ -487,29 +483,27 @@ io.on('connection', socket => {
 });
 
 
-// ── static files ─────────────────────────────────────
-// Serve static files from the function's root directory
-app.use(express.static(clientDistPath)); // e.g., /assets/index-BBlsuepU.js
+// --- Static files served from /var/task/client/dist ---
+app.use(express.static(clientDistPath));
 
-// ── SPA fallback ─────────────────────────────────────
-// Match requests that ARE NOT /socket.io/* AND DO NOT have a file extension
+// --- SPA fallback serving /var/task/client/dist/index.html ---
 app.get(/^\/(?!socket\.io)(?!.*\.\w+($|\?)).*$/, (req, res, next) => {
-  // Check if the request was likely for a static file but missed by express.static
-  // This check might be redundant if express.static works correctly, but adds safety.
   if (path.extname(req.path)) {
      console.warn(`Fallback caught potential static file request: ${req.path}`);
-     // Let it potentially 404 if not handled by other routes
      return next();
   }
-
-  // Otherwise, serve index.html from the function's root directory
-  const indexPath = path.join(clientDistPath, 'index.html'); // Should now correctly point to /var/task/index.html
+  const indexPath = path.join(clientDistPath, 'index.html');
   console.log(`Serving SPA fallback for path: ${req.path} -> ${indexPath}`);
   res.sendFile(indexPath, (err) => {
     if (err) {
         console.error(`Error sending index.html from ${indexPath}:`, err);
         if (!res.headersSent) {
-            res.status(500).send("Internal Server Error");
+            // Send the specific ENOENT error status if applicable
+            if (err.code === 'ENOENT') {
+                 res.status(404).send(`SPA Fallback Error: ${err.message}`);
+            } else {
+                 res.status(500).send("Internal Server Error");
+            }
         }
     }
   });
