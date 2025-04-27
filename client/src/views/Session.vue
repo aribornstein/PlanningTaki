@@ -57,6 +57,7 @@
       <h3>Phase: Explain Task 🗣️</h3>
       <h4>Task: {{ s.currentTask?.title }}</h4>
       <p>Owner ({{ players.find(p => p.id === s.currentTask?.owner)?.name }}) is explaining...</p>
+      <p>Please be sure to clearly explain the task's scope, risks, and acceptence criteria.</p>
       <p>⏱️ Time Remaining: {{ countdown }}</p>
       <button v-if="isOwner" @click="doneExplain">Done Explaining</button>
     </section>
@@ -264,12 +265,15 @@ function updateCountdown() {
     const now = Date.now();
     const ms = s.value.timer - now;
     if (ms <= 0) {
-      countdown.value = '0s';
+      countdown.value = '0m 0s'; // Changed format
       clearInterval(intervalId);
       intervalId = null;
       // Optionally trigger server action if timer ends (server should ideally handle this)
     } else {
-      countdown.value = Math.ceil(ms / 1000) + 's';
+      const totalSeconds = Math.ceil(ms / 1000);
+      const minutes = Math.floor(totalSeconds / 60);
+      const seconds = totalSeconds % 60;
+      countdown.value = `${minutes}m ${seconds}s`; // Changed format
     }
   };
 
