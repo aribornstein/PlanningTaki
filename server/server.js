@@ -3,9 +3,6 @@ import http from 'http';
 import { Server } from 'socket.io';
 import path from 'node:path'; // Ensure path is imported
 
-// Change clientDistPath back to resolve the nested directory
-// path.resolve('.') points to /var/task
-// path.resolve('client/dist') points to /var/task/client/dist
 const clientDistPath = path.resolve('client/dist');
 
 const app = express();
@@ -16,6 +13,20 @@ const io = new Server(server, {
   transports: ['websocket'],        // ← force WS only
   cors: { origin: '*', methods: ['GET','POST'] }
 });
+
+// --- Add Socket.IO Server Error Logging ---
+io.engine.on("connection_error", (err) => {
+  console.error("SOCKET.IO ENGINE CONNECTION ERROR:");
+  console.error("  Code:", err.code);    // e.g., 1
+  console.error("  Message:", err.message); // e.g., "Session ID unknown"
+  console.error("  Context:", err.context); // e.g., { sid: "someSid" }
+});
+
+io.on('error', (err) => {
+    console.error("SOCKET.IO SERVER INSTANCE ERROR:", err);
+});
+// --- End Socket.IO Server Error Logging ---
+
 
 /* ── in‑memory model & helpers (Keep as is) ──────── */
 const fibonacci = [1, 2, 3, 5, 8, 13, 21];
@@ -47,6 +58,12 @@ function getSession(socket, currentSession, eventName) { /* ... as before ... */
 /* ── socket.io endpoints (Keep as is) ──────────────── */
 io.on('connection', socket => {
     console.log(`Socket connected: ${socket.id}`);
+    // --- Add Socket Instance Error Logging ---
+    socket.on('error', (err) => {
+        console.error(`SOCKET INSTANCE ERROR (Socket ID: ${socket.id}):`, err);
+    });
+    // --- End Socket Instance Error Logging ---
+
     let currentSession;
     // --- PASTE ALL GAME LOGIC HANDLERS HERE ---
     // ('join', 'addTask', 'selectTask', 'vote', 'accept', 'dispute',
@@ -488,42 +505,55 @@ io.on('connection', socket => {
 
 
 // ── static files ─────────────────────────────────────
-// Serve static files from the nested /var/task/client/dist directory
 app.use(express.static(clientDistPath));
 
 // ── SPA fallback ─────────────────────────────────────
-// Match requests that ARE NOT /socket.io/* AND DO NOT have a file extension
 app.get(/^\/(?!socket\.io)(?!.*\.\w+($|\?)).*$/, (req, res, next) => {
-  if (path.extname(req.path)) {
-     console.warn(`Fallback caught potential static file request: ${req.path}`);
-     return next();
-  }
+    if (path.extname(req.path)) {
+       console.warn(`Fallback caught potential static file request: ${req.path}`);
+       return next();
+    }
 
-  // Serve index.html from the nested /var/task/client/dist directory
-  const indexPath = path.join(clientDistPath, 'index.html'); // Should now correctly point to /var/task/client/dist/index.html
-  console.log(`Serving SPA fallback for path: ${req.path} -> ${indexPath}`);
-  res.sendFile(indexPath, (err) => {
-    if (err) {
-        console.error(`Error sending index.html from ${indexPath}:`, err);
-        if (!res.headersSent) {
-            if (err.code === 'ENOENT') {
-                 // If this happens AGAIN, something is fundamentally wrong with includeFiles
-                 res.status(404).send(`SPA Fallback Error: ${err.message}. File not found even at ${indexPath}. Check Vercel includeFiles behavior.`);
-            } else {
-                 res.status(500).send("Internal Server Error");
+    // Serve index.html from the nested /var/task/client/dist directory
+    const indexPath = path.join(clientDistPath, 'index.html');
+    res.sendFile(indexPath, (err) => {
+        if (err) {
+            console.error(`Error sending index.html from ${indexPath}:`, err);
+            if (!res.headersSent) {
+                if (err.code === 'ENOENT') {
+                     // If this happens AGAIN, something is fundamentally wrong with includeFiles
+                     res.status(404).send(`SPA Fallback Error: ${err.message}. File not found even at ${indexPath}. Check Vercel includeFiles behavior.`);
+                } else {
+                     res.status(500).send("Internal Server Error");
+                }
             }
         }
-    }
-  });
+    });
 });
 
 // Optional: Add a final 404 handler
 app.use((req, res) => {
-  if (!res.headersSent) {
-    console.log(`Final 404 handler reached for path: ${req.path}`);
-    res.status(404).send('Not Found');
-  }
+    if (!res.headersSent) {
+      console.log(`Final 404 handler reached for path: ${req.path}`);
+      res.status(404).send('Not Found');
+    }
 });
+
+
+// --- Add HTTP Server Upgrade Error Logging ---
+server.on('upgrade', (req, socket, head) => {
+  console.log(`HTTP server received upgrade request for: ${req.url}`);
+  // You might add more detailed logging here if needed, but often
+  // just knowing the upgrade request arrived is useful.
+  // Socket.IO's internal handling should take over from here.
+});
+
+server.on('error', (err) => {
+    console.error("HTTP SERVER ERROR:", err);
+    // This might catch errors if the server fails before Express/Socket.IO load
+});
+// --- End HTTP Server Upgrade Error Logging ---
+
 
 /* ─── Server Start (Vercel uses the export) ────────── */
 export default server;
