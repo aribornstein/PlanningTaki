@@ -12,11 +12,8 @@ const server = http.createServer(app); // Create server FROM the Express app
 // Initialize Socket.IO with the http server instance
 // Socket.IO will automatically handle requests to '/socket.io/'
 const io = new Server(server, {
-    cors: {
-        origin: "*", // Allow all origins for simplicity, restrict in production
-        methods: ["GET", "POST"]
-    }
-    // Default path is '/socket.io/'
+  transports: ['websocket'],        // ← force WS only
+  cors: { origin: '*', methods: ['GET','POST'] }
 });
 
 /* ── in‑memory model & helpers (Keep as is) ──────── */
