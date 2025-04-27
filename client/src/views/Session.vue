@@ -67,12 +67,28 @@
        <h4>Task: {{ s.currentTask?.title }}</h4>
        <p>Owner: {{ players.find(p => p.id === s.currentTask?.owner)?.name }} (Remaining Points: {{ players.find(p => p.id === s.currentTask?.owner)?.remaining }})</p>
        <p>Select your estimate (must be ≤ owner's remaining points):</p>
-       <div class="vote-buttons">
-         <button v-for="v in availableFib" :key="v" @click="vote(v)" :class="{ 'selected-vote': me?.vote === v }">
-           {{ v }}
-         </button>
+       <!-- Use Taki cards for voting -->
+       <div class="vote-cards-container">
+         <!-- Number Cards -->
+         <div v-for="v in availableFib"
+              :key="v"
+              @click="vote(v)"
+              class="taki-card"
+              :class="{ 'selected-vote': me?.vote === v }"
+              :style="{ background: getCardColor(v) }">
+           <div class="card-number">{{ v }}</div>
+         </div>
+         <!-- Stop Card for Reprioritization -->
+         <div v-if="me?.vote === null"
+              @click="proposeRepr"
+              class="taki-card stop-card"
+              :style="{ background: '#ef4444' }"> <!-- Example: Red background -->
+            <div class="stop-icon">✋</div>
+            <div class="card-text">Reprioritize</div> <!-- Added text -->
+         </div>
        </div>
-       <button @click="proposeRepr" class="propose-button" v-if="me?.vote === null">Propose Reprioritization?</button>
+       <!-- Removed the old button -->
+       <!-- <button @click="proposeRepr" class="propose-button" v-if="me?.vote === null">Propose Reprioritization?</button> -->
        <p v-if="me?.vote !== null">You voted: {{ me.vote }}</p>
     </section>
 
@@ -287,6 +303,13 @@ onUnmounted(() => {
   // store.disconnect(); // Example if you add a disconnect action
 });
 
+const cardColors = ['blue', 'red', 'green', '#ffd92f']; // Example colors
+
+function getCardColor(value) {
+  // Simple logic: cycle through colors based on Fibonacci index
+  const index = fib.indexOf(value);
+  return cardColors[index % cardColors.length] || '#ffd92f'; // Fallback to yellow
+}
 </script>
 
 <style scoped>
@@ -432,4 +455,83 @@ input[type="text"], input[type="number"] {
 .repr-discuss-phase strong {
     color: #b91c1c; /* Dark red for emphasis */
 }
+
+/* ---------- Taki Card Styles ---------- */
+.vote-cards-container {
+  display: flex;
+  gap: 15px; /* Adjust gap between cards */
+  padding: 10px 0; /* Add some padding */
+  justify-content: center; /* Center cards */
+  align-items: center;
+  flex-wrap: wrap; /* Allow wrapping on smaller screens */
+  margin-bottom: 15px; /* Space below cards */
+}
+
+.taki-card {
+  flex: 0 0 80px; /* Fixed base size, adjust as needed */
+  max-width: 100px; /* Max width */
+  aspect-ratio: 2 / 3;
+  border: 4px solid #fff; /* Slightly smaller border */
+  border-radius: 10px; /* Adjust radius */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffd92f; /* Default yellow */
+  box-shadow: 0 2px 5px rgba(0,0,0,.15);
+  transition: .2s;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.taki-card:hover {
+  transform: scale(1.05) translateY(-5px); /* Adjust hover effect */
+  box-shadow: 0 4px 10px rgba(0,0,0,.2);
+}
+
+.taki-card.selected-vote {
+  border-color: #007bff; /* Highlight selected card */
+  box-shadow: 0 0 15px rgba(0, 123, 255, 0.5);
+  transform: scale(1.08);
+}
+
+.card-number {
+  font-size: clamp(20px, 4vw, 38px); /* Adjust font size */
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 1px 1px 2px rgba(0,0,0,.4);
+}
+
+/* UTF-8 stop hand */
+.stop-icon {
+  font-size: clamp(35px, 7vw, 60px); /* Slightly adjusted size range */
+  line-height: 1;
+  flex-grow: 1; /* Allow icon to take up space */
+  display: flex;
+  align-items: center; /* Center vertically */
+  justify-content: center;
+  color: white;
+  padding-top: 5px; /* Add some padding at the top */
+}
+
+/* Style for text on cards */
+.card-text {
+  font-size: clamp(8px, 1.5vw, 12px); /* Smaller text */
+  font-weight: bold;
+  color: white;
+  text-align: center;
+  padding: 0 5px 5px 5px; /* Padding around text */
+  line-height: 1.1;
+  text-shadow: 1px 1px 1px rgba(0,0,0,0.5);
+}
+
+/* Specific style adjustments for the stop card */
+.stop-card {
+  display: flex; /* Use flexbox */
+  flex-direction: column; /* Stack icon and text vertically */
+  justify-content: space-between; /* Push text towards bottom */
+  align-items: center; /* Center horizontally */
+  /* border-color: black; */ /* Optional border */
+}
+
+/* ... keep other existing styles ... */
 </style>
