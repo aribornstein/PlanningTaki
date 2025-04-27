@@ -7,55 +7,54 @@ import path from 'node:path';
 const clientDistPath = path.resolve('client/dist');
 
 const app = express();
-const server = http.createServer(app);
+const server = http.createServer(app); // Create server FROM the Express app
+
+// Initialize Socket.IO with the http server instance
+// Socket.IO will automatically handle requests to '/socket.io/'
 const io = new Server(server, {
     cors: {
         origin: "*", // Allow all origins for simplicity, restrict in production
         methods: ["GET", "POST"]
     }
+    // Default path is '/socket.io/'
 });
 
-/* ── in‑memory model ───────────────────────────────── */
-const fibonacci = [0, 1, 2, 3, 5, 8, 13, 21, 34]; // Added 0 for potential use
-const sessions = {};           // id → Session
-
-function createSession(id) {
+/* ── in‑memory model & helpers (Keep as is) ──────── */
+const fibonacci = [0, 1, 2, 3, 5, 8, 13, 21, 34];
+const sessions = {};
+function createSession(id) { /* ... as before ... */
     return sessions[id] = {
         id, phase: 'lobby', players: {}, tasks: [], currentTask: null,
-        reprVote: null, timer: null, taskToReprioritizeId: null // Add taskToReprioritizeId
+        reprVote: null, timer: null, taskToReprioritizeId: null
     };
 }
-
-/* ── helpers ───────────────────────────────────────── */
-function broadcast(id) {
-    if (sessions[id]) { // Check if session exists before broadcasting
+function broadcast(id) { /* ... as before ... */
+    if (sessions[id]) {
         io.to(id).emit('state', sessions[id]);
-        console.log(`Broadcasting state for session ${id}`); // Add logging
+        console.log(`Broadcasting state for session ${id}`);
     } else {
         console.warn(`Attempted to broadcast to non-existent session: ${id}`);
     }
 }
-
-function every(obj, fn) { return Object.values(obj).every(fn); }
-
-// Helper to safely get the session and handle errors
-function getSession(socket, currentSession, eventName) {
+function every(obj, fn) { /* ... as before ... */ return Object.values(obj).every(fn); }
+function getSession(socket, currentSession, eventName) { /* ... as before ... */
     if (!currentSession || !sessions[currentSession]) {
         console.error(`Error: Event '${eventName}' received for unknown/invalid session '${currentSession}' from socket ${socket.id}`);
-        // Optionally emit a specific error back to the client
-        // socket.emit('serverError', `Invalid session state for event: ${eventName}`);
-        return null; // Indicate failure
+        return null;
     }
     return sessions[currentSession];
 }
 
 
-/* ── socket.io endpoints ───────────────────────────── */
+/* ── socket.io endpoints (Keep as is) ──────────────── */
 io.on('connection', socket => {
-    let currentSession; // This variable holds the session ID for this specific connection
-
     console.log(`Socket connected: ${socket.id}`);
-
+    let currentSession;
+    // --- PASTE ALL GAME LOGIC HANDLERS HERE ---
+    // ('join', 'addTask', 'selectTask', 'vote', 'accept', 'dispute',
+    //  'proposeRepr', 'reprBallot', 'proposeTaskRemoval', 'doneRepr',
+    //  'confirmTaskRemoval', 'cancelReprioritization', 'revote', 'disconnect')
+    // Example:
     socket.on('join', ({ sessionId, name, budget }) => {
         if (!sessionId || !name || typeof budget !== 'number') {
             console.error(`Invalid join data from ${socket.id}:`, { sessionId, name, budget });
@@ -492,43 +491,53 @@ io.on('connection', socket => {
 
 /* ── static & SPA fallback ─────────────────────────── */
 
-// Serve static files FIRST
+// Serve static files from the client build directory
+// This should handle requests for .js, .css, .svg, .html etc. found in client/dist
 app.use(express.static(clientDistPath));
 
-// API routes should be defined *before* the SPA fallback
-// Example: app.get('/api/session', (req, res) => { /* ... */ });
+// API routes would go here, BEFORE the fallback
+// app.get('/api/...', ...);
 
-// SPA fallback: Send 'index.html' for non-file, non-API requests
+// SPA fallback: Send 'index.html' for requests that weren't handled above
+// This should only catch requests for SPA routes (e.g., /session/abc)
+// It should NOT catch /socket.io/ paths (handled by Socket.IO directly)
+// or valid static file paths (handled by express.static)
 app.get('*', (req, res) => {
-    // Check if it's likely an API request or a file request missed by static middleware
-    if (req.path.startsWith('/api/') || path.extname(req.path)) {
-        // If it looks like an API call or a file, but wasn't handled, send 404
-        if (!res.headersSent) {
-            console.log(`Sending 404 for non-SPA path: ${req.path}`);
-            res.status(404).send('Not Found');
-        }
-    } else {
-        // Otherwise, assume it's an SPA route and send index.html
-        const indexPath = path.join(clientDistPath, 'index.html');
-        console.log(`Attempting to send SPA fallback: ${indexPath}`);
-        res.sendFile(indexPath, (err) => {
-            if (err) {
-                console.error(`Error sending index.html from ${indexPath}:`, err);
-                if (!res.headersSent) {
-                    if (err.code === 'ENOENT') {
-                        res.status(404).send(`Not Found - ${indexPath} missing`);
-                    } else {
-                        res.status(500).send("Internal Server Error");
-                    }
+    // If the request reaches here, it means it wasn't a static file
+    // and hopefully not a /socket.io/ request (which Socket.IO should have handled).
+    // Assume it's an SPA route.
+
+    // Log unexpected socket.io requests reaching here
+    if (req.path.startsWith('/socket.io/')) {
+         console.warn(`SPA fallback received unexpected Socket.IO path: ${req.path}`);
+         // Send 404 as Express shouldn't handle this
+         if (!res.headersSent) {
+            res.status(404).send('Not Found (Socket.IO path)');
+         }
+         return;
+    }
+
+    // Send the main index.html for SPA routing
+    const indexPath = path.join(clientDistPath, 'index.html');
+    console.log(`Attempting to send SPA fallback for path ${req.path}: ${indexPath}`);
+    res.sendFile(indexPath, (err) => {
+        if (err) {
+            // Log error if index.html itself is missing or unreadable
+            console.error(`Error sending index.html from ${indexPath}:`, err);
+            if (!res.headersSent) {
+                if (err.code === 'ENOENT') {
+                    res.status(404).send(`Not Found - ${indexPath} missing`);
+                } else {
+                    res.status(500).send("Internal Server Error");
                 }
             }
-        });
-    }
+        }
+    });
 });
 
 
 /* ─── Server Start (Vercel uses the export) ────────── */
 // No server.listen() here for Vercel deployment
 
-// Export the http.Server instance instead of the Express app
+// Export the http.Server instance
 export default server;
