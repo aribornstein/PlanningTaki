@@ -1,34 +1,39 @@
 import express from 'express';
 import http from 'http';
 import { Server } from 'socket.io';
-import path from 'node:path'; // Ensure path is imported
+import path from 'node:path';
+
+console.log(">>> [Vercel Function] SERVER SCRIPT STARTED <<<"); // Very early log
 
 const clientDistPath = path.resolve('client/dist');
+console.log(`>>> [Vercel Function] Client dist path resolved to: ${clientDistPath}`);
 
 const app = express();
-const server = http.createServer(app); // Create server FROM the Express app
+console.log(">>> [Vercel Function] Express app created <<<");
+
+const server = http.createServer(app);
+console.log(">>> [Vercel Function] HTTP server created <<<");
 
 // Initialize Socket.IO with the http server instance
 const io = new Server(server, {
   transports: ['websocket'],        // ← force WS only
   cors: { origin: '*', methods: ['GET','POST'] }
 });
+console.log(">>> [Vercel Function] Socket.IO server created <<<");
+
 
 // --- Add Socket.IO Server Error Logging ---
 io.engine.on("connection_error", (err) => {
-  console.error("SOCKET.IO ENGINE CONNECTION ERROR:");
-  console.error("  Code:", err.code);    // e.g., 1
-  console.error("  Message:", err.message); // e.g., "Session ID unknown"
-  console.error("  Context:", err.context); // e.g., { sid: "someSid" }
+  console.error(">>> [Vercel Function] SOCKET.IO ENGINE CONNECTION ERROR:", err);
 });
-
 io.on('error', (err) => {
-    console.error("SOCKET.IO SERVER INSTANCE ERROR:", err);
+    console.error(">>> [Vercel Function] SOCKET.IO SERVER INSTANCE ERROR:", err);
 });
 // --- End Socket.IO Server Error Logging ---
 
 
-/* ── in‑memory model & helpers (Keep as is) ──────── */
+/* ── in‑memory model & helpers ──────── */
+console.log(">>> [Vercel Function] Defining model and helpers <<<");
 const fibonacci = [1, 2, 3, 5, 8, 13, 21];
 const sessions = {};
 function createSession(id) { /* ... as before ... */
@@ -55,14 +60,13 @@ function getSession(socket, currentSession, eventName) { /* ... as before ... */
 }
 
 
-/* ── socket.io endpoints (Keep as is) ──────────────── */
+/* ── socket.io endpoints ──────────────── */
+console.log(">>> [Vercel Function] Setting up io.on('connection') <<<");
 io.on('connection', socket => {
-    console.log(`Socket connected: ${socket.id}`);
-    // --- Add Socket Instance Error Logging ---
+    console.log(`>>> [Vercel Function] Socket connected: ${socket.id}`);
     socket.on('error', (err) => {
-        console.error(`SOCKET INSTANCE ERROR (Socket ID: ${socket.id}):`, err);
+        console.error(`>>> [Vercel Function] SOCKET INSTANCE ERROR (Socket ID: ${socket.id}):`, err);
     });
-    // --- End Socket Instance Error Logging ---
 
     let currentSession;
     // --- PASTE ALL GAME LOGIC HANDLERS HERE ---
@@ -505,9 +509,11 @@ io.on('connection', socket => {
 
 
 // ── static files ─────────────────────────────────────
+console.log(">>> [Vercel Function] Setting up static files middleware <<<");
 app.use(express.static(clientDistPath));
 
 // ── SPA fallback ─────────────────────────────────────
+console.log(">>> [Vercel Function] Setting up SPA fallback route <<<");
 app.get(/^\/(?!socket\.io)(?!.*\.\w+($|\?)).*$/, (req, res, next) => {
     if (path.extname(req.path)) {
        console.warn(`Fallback caught potential static file request: ${req.path}`);
@@ -532,6 +538,7 @@ app.get(/^\/(?!socket\.io)(?!.*\.\w+($|\?)).*$/, (req, res, next) => {
 });
 
 // Optional: Add a final 404 handler
+console.log(">>> [Vercel Function] Setting up final 404 handler <<<");
 app.use((req, res) => {
     if (!res.headersSent) {
       console.log(`Final 404 handler reached for path: ${req.path}`);
@@ -541,19 +548,16 @@ app.use((req, res) => {
 
 
 // --- Add HTTP Server Upgrade Error Logging ---
+console.log(">>> [Vercel Function] Setting up HTTP server listeners ('upgrade', 'error') <<<");
 server.on('upgrade', (req, socket, head) => {
-  console.log(`HTTP server received upgrade request for: ${req.url}`);
-  // You might add more detailed logging here if needed, but often
-  // just knowing the upgrade request arrived is useful.
-  // Socket.IO's internal handling should take over from here.
+  console.log(`>>> [Vercel Function] HTTP server received upgrade request for: ${req.url}`);
 });
-
 server.on('error', (err) => {
-    console.error("HTTP SERVER ERROR:", err);
-    // This might catch errors if the server fails before Express/Socket.IO load
+    console.error(">>> [Vercel Function] HTTP SERVER ERROR:", err);
 });
 // --- End HTTP Server Upgrade Error Logging ---
 
 
 /* ─── Server Start (Vercel uses the export) ────────── */
+console.log(">>> [Vercel Function] Exporting server instance <<<");
 export default server;
