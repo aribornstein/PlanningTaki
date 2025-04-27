@@ -1,7 +1,7 @@
 import express from 'express';
 import http from 'http';
 import { Server } from 'socket.io';
-import path from 'node:path';
+import path from 'node:path'; // Ensure path is imported
 
 // Use path.resolve for Vercel compatibility
 const clientDistPath = path.resolve('client/dist');
@@ -487,11 +487,39 @@ io.on('connection', socket => {
 
 
 // ── static files ─────────────────────────────────────
-app.use(express.static(clientDistPath));   // js / css / vite.svg …
+// Serve static files from client/dist first
+app.use(express.static(clientDistPath)); // e.g., /assets/index-BBlsuepU.js
 
-// ── SPA fallback (must NOT catch /socket.io/*) ───────
-app.get(/^\/(?!socket\.io).*/, (req, res) => {
-  res.sendFile(path.join(clientDistPath, 'index.html'));
+// ── SPA fallback ─────────────────────────────────────
+// Match requests that ARE NOT /socket.io/* AND DO NOT have a file extension
+app.get(/^\/(?!socket\.io)(?!.*\.\w+($|\?)).*$/, (req, res, next) => {
+  // Check if the request was likely for a static file but missed by express.static
+  // This check might be redundant if express.static works correctly, but adds safety.
+  if (path.extname(req.path)) {
+     console.warn(`Fallback caught potential static file request: ${req.path}`);
+     // Let it potentially 404 if not handled by other routes
+     return next();
+  }
+
+  // Otherwise, serve index.html for SPA routing
+  const indexPath = path.join(clientDistPath, 'index.html');
+  console.log(`Serving SPA fallback for path: ${req.path} -> ${indexPath}`);
+  res.sendFile(indexPath, (err) => {
+    if (err) {
+        console.error(`Error sending index.html from ${indexPath}:`, err);
+        if (!res.headersSent) {
+            res.status(500).send("Internal Server Error");
+        }
+    }
+  });
+});
+
+// Optional: Add a final 404 handler for anything not caught
+app.use((req, res) => {
+  if (!res.headersSent) {
+    console.log(`Final 404 handler reached for path: ${req.path}`);
+    res.status(404).send('Not Found');
+  }
 });
 
 
