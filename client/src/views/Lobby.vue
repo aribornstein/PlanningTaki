@@ -4,7 +4,7 @@
     <img alt="Taki Logo" :src="takiLogo" class="logo">
     <div class="input-group">
       <label for="name">Name:</label>
-      <input type="text" id="name" v-model="name" placeholder="Name" />
+      <input type="text" id="name" v-model="name" placeholder="Enter your name here" />
     </div>
     <div class="input-group">
       <label for="budget">Budget:</label>
@@ -48,7 +48,7 @@ import takiLogo from '../../img/taki.png'; // Import the image
 const router = useRouter();
 const route = useRoute();
 
-const name = ref('Player 1'); // Default name
+const name = ref(''); // No default name
 const budget = ref(21);
 const id = ref('');
 const generatedId = ref(false);
