@@ -6,13 +6,13 @@
       "src": "server/server.js",
       "use": "@vercel/node",
       "config": {
-        "includeFiles": "client/dist/**" 
+        "includeFiles": "client/dist/**"
       }
     }
   ],
 
   "routes": [
-    { "src": "/socket.io/(.*)", "dest": "server/server.js" }, 
+    { "src": "/socket.io/(.*)", "dest": "server/server.js" },
     { "src": "/(.*)",              "dest": "server/server.js" }
   ]
 }

@@ -1,15 +1,17 @@
 import express from 'express';
 import http from 'http';
 import { Server } from 'socket.io';
-import path from 'node:path';
+import path from 'node:path'; // Ensure path is imported
 
-// This should now correctly point to /var/task/client/dist
-const clientDistPath = path.resolve('client/dist');
+// Assume 'includeFiles' copies contents to the function root (/var/task)
+const clientDistPath = path.resolve('.');
 
 const app = express();
-const server = http.createServer(app);
+const server = http.createServer(app); // Create server FROM the Express app
+
+// Initialize Socket.IO with the http server instance
 const io = new Server(server, {
-  transports: ['websocket'],
+  transports: ['websocket'],        // ← force WS only
   cors: { origin: '*', methods: ['GET','POST'] }
 });
 
@@ -483,24 +485,29 @@ io.on('connection', socket => {
 });
 
 
-// --- Static files served from /var/task/client/dist ---
+// ── static files ─────────────────────────────────────
+// Serve static files from the function's root directory (/var/task)
 app.use(express.static(clientDistPath));
 
-// --- SPA fallback serving /var/task/client/dist/index.html ---
+// ── SPA fallback ─────────────────────────────────────
+// Match requests that ARE NOT /socket.io/* AND DO NOT have a file extension
 app.get(/^\/(?!socket\.io)(?!.*\.\w+($|\?)).*$/, (req, res, next) => {
   if (path.extname(req.path)) {
      console.warn(`Fallback caught potential static file request: ${req.path}`);
-     return next();
+     return next(); // Let it 404 if not found by express.static
   }
-  const indexPath = path.join(clientDistPath, 'index.html');
+
+  // Serve index.html from the function's root directory (/var/task)
+  const indexPath = path.join(clientDistPath, 'index.html'); // Should point to /var/task/index.html
   console.log(`Serving SPA fallback for path: ${req.path} -> ${indexPath}`);
   res.sendFile(indexPath, (err) => {
     if (err) {
+        // THIS IS THE CRITICAL ERROR POINT
         console.error(`Error sending index.html from ${indexPath}:`, err);
         if (!res.headersSent) {
-            // Send the specific ENOENT error status if applicable
             if (err.code === 'ENOENT') {
-                 res.status(404).send(`SPA Fallback Error: ${err.message}`);
+                 // If this happens, the client build artifacts are NOT in /var/task
+                 res.status(404).send(`SPA Fallback Error: ${err.message}. Critical issue: Client build files not found in function bundle. Check Vercel build logs for 'vercel-build' script success and 'includeFiles' behavior.`);
             } else {
                  res.status(500).send("Internal Server Error");
             }
@@ -509,7 +516,7 @@ app.get(/^\/(?!socket\.io)(?!.*\.\w+($|\?)).*$/, (req, res, next) => {
   });
 });
 
-// Optional: Add a final 404 handler for anything not caught
+// Optional: Add a final 404 handler
 app.use((req, res) => {
   if (!res.headersSent) {
     console.log(`Final 404 handler reached for path: ${req.path}`);
@@ -517,9 +524,5 @@ app.use((req, res) => {
   }
 });
 
-
 /* ─── Server Start (Vercel uses the export) ────────── */
-// No server.listen() here for Vercel deployment
-
-// Export the http.Server instance
 export default server;
