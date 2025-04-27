@@ -1,7 +1,7 @@
 {
   "type": "module",
   "scripts": {
-    "vercel-build": "echo '>>> [vercel-build] Skipping client build for testing.'",
+    "vercel-build": "echo '>>> [vercel-build] STARTING...' && echo '>>> [vercel-build] Current directory:' && pwd && echo '>>> [vercel-build] Installing client dependencies using npm ci...' && npm ci --prefix ../client && echo '>>> [vercel-build] Building client...' && npm run build --prefix ../client && echo '>>> [vercel-build] Client build finished. Listing client/dist contents:' && ls -R ../client/dist && echo '>>> [vercel-build] FINISHED.'",
     "start": "node server.js"
   },
   "dependencies": {
