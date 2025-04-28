@@ -232,4 +232,22 @@ Feel free to submit new suggestions, scenarios, or variations!
 
 ---
 
+# 📝 TODO List
+
+## High Priority
+-   **Session Manager Role:** Assign a "Manager" role to the first user joining. The Manager handles tie-breaking and reprioritization decisions instead of the task owner. Requires server logic changes (`server.js`) and potential UI updates (`Session.vue`).
+-   **Abandon Task Card (Owner Only):** Add a button for the task owner during the 'vote' phase (`Session.vue`) to abandon the current task (set points to null, clear `currentTask`, return to 'lobby'). Requires new server event (`server.js`).
+-   **Unbudgeted Tasks Indicator:** Display a count/list of tasks with `points: null` next to each player's name in `Session.vue`. Requires a computed property.
+
+## Medium Priority
+-   **Reprioritization Vote Indicator:** Show a "✔️ Voted" indicator next to players who have voted during the `reprVote` phase in `Session.vue`, using `s.reprVote.voters`.
+-   **Export Task List:** Add an "Export Tasks" button in `Session.vue` to generate a downloadable file (CSV/text) of Task Title, Owner Name, and Points using client-side JS.
+
+## Low Priority
+-   **Edit Task Text:** Allow task owners to edit the title of their unestimated tasks in the 'lobby' phase (`Session.vue`). Requires an "Edit" button and a new socket event/handler (`server.js`).
+-   **Choose Player Emoji:** Add an emoji selector in `Lobby.vue`, send it with the `join` event, store it in `server.js`, and display it next to player names in `Session.vue`.
+-   **Collapsible User Task Lists:** Make the "Budgeted Tasks" list under each player collapsible/expandable in `Session.vue` using local component state.
+
+---
+
 # ✨ End of README ✨
