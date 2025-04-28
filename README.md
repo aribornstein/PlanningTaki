@@ -225,6 +225,23 @@ Feel free to submit new suggestions, scenarios, or variations!
 
 ---
 
+# 🐳 Running Locally with Docker
+
+To build and run the Planning Taki application using Docker:
+
+1.  **Build the Docker image:**
+    ```bash
+    docker build -t planningtaki:local .
+    ```
+
+2.  **Run the Docker container:**
+    ```bash
+    docker run --rm -it -p 3000:3000 planningtaki:local
+    ```
+    The application will be accessible at `http://localhost:3000`.
+
+---
+
 # ✨ Pro Tips
 - Use disputes sparingly.
 - Keep discussions timeboxed.
