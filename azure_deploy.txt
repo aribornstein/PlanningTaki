@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+set -e
+
+az group create \
+  --name taki-rg \
+  --location "East US"
+
+az acr create \
+  --resource-group taki-rg \
+  --name planningtakiacr \
+  --sku Standard \
+  --location "East US"
+
+az acr build \
+  --registry planningtakiacr \
+  --resource-group taki-rg \
+  --image planningtaki:latest \
+  --file Dockerfile \
+  .
+
+az extension add --name containerapp
+
+az containerapp env create \
+  --name taki-env \
+  --resource-group taki-rg \
+  --location "East US"
+
+az containerapp up \
+  --name planning-taki-aca \
+  --resource-group taki-rg \
+  --environment taki-env \
+  --image planningtakiacr.azurecr.io/planningtaki:latest \
+  --ingress external \
+  --target-port 3000 \
+  --location "East US"
+
+az containerapp logs show \
+  --name planning-taki-aca \
+  --resource-group taki-rg \
+  --follow
+
+
+--- To push an updated container 
+
+# 3a. Build & push your updated image into ACR
+az acr build \
+  --registry planningtakiacr \
+  --resource-group taki-rg \
+  --image planningtaki:latest \
+  --file Dockerfile \
+  .
+
+# 3b. Update your Container App to use that image
+az containerapp update \
+  --name planning-taki-aca \
+  --resource-group taki-rg \
+  --image planningtakiacr.azurecr.io/planningtaki:latest   # new image tag :contentReference[oaicite:0]{index=0}
+
+# 3c. (Optional) tail logs to watch the new revision start
+az containerapp logs show \
+  --name planning-taki-aca \
+  --resource-group taki-rg \
+  --follow
