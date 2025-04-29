@@ -56,6 +56,15 @@ export const useSession = defineStore('session', {
     accept() { if (this.session) socket.emit('accept'); },
     dispute() { if (this.session) socket.emit('dispute'); },
     revote() { if (this.session) socket.emit('revote'); },
+    // Add action for abandoning task
+    abandonTask() {
+      if (this.session && this.session.phase === 'vote' && this.session.currentTask?.owner === this.socketId) {
+         console.log('Emitting abandonTask'); // Client-side log
+         socket.emit('abandonTask');
+      } else {
+         console.warn('Attempted to call abandonTask action in invalid state.');
+      }
+    },
     // Add actions for reprioritization adjustment phase
     proposeTaskRemoval(taskId) { if (this.session) socket.emit('proposeTaskRemoval', taskId); },
     doneRepr() { if (this.session) socket.emit('doneRepr'); },

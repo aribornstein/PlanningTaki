@@ -87,9 +87,15 @@
             <div class="stop-icon">✋</div>
             <div class="card-text">Reprioritize</div> <!-- Added text -->
          </div>
+         <!-- Add Abandon Task Card for Owner -->
+         <div v-if="isOwner"
+              @click="abandonTask"
+              class="taki-card abandon-card"
+              :style="{ background: '#fcd34d' }"> <!-- Example: Amber background -->
+            <div class="abandon-icon">👑</div> <!-- Crown Icon -->
+            <div class="card-text">Abandon</div> <!-- Added text -->
+         </div>
        </div>
-       <!-- Removed the old button -->
-       <!-- <button @click="proposeRepr" class="propose-button" v-if="me?.vote === null">Propose Reprioritization?</button> -->
        <p v-if="me?.vote !== null">You voted: {{ me.vote }}</p>
     </section>
 
@@ -241,11 +247,11 @@ function repr(c) { store.reprBallot(c); }
 function accept() { store.accept(); }
 function dispute() { store.dispute(); }
 function revote() { store.revote(); }
+// Add new action for abandoning task
+function abandonTask() { store.abandonTask(); }
 // Add new actions for reprioritization adjustment
 function proposeTaskRemoval(taskId) { store.proposeTaskRemoval(taskId); }
 function doneRepr() { store.doneRepr(); }
-function confirmTaskRemoval() { store.confirmTaskRemoval(); }
-function cancelReprioritization() { store.cancelReprioritization(); }
 
 
 // --- Countdown Timer ---
@@ -537,5 +543,40 @@ input[type="text"], input[type="number"] {
   /* border-color: black; */ /* Optional border */
 }
 
-/* ... keep other existing styles ... */
+.abandon-card {
+  /* Style similar to stop-card */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* Change justify-content to space-between to push text down */
+  justify-content: space-between;
+  cursor: pointer;
+  border: 4px solid #fff; /* Match other card borders */
+  /* Keep amber background */
+  /* color: #92400e; /* Dark amber text - applied via .card-text */
+}
+
+.abandon-icon {
+  font-size: clamp(35px, 7vw, 60px); /* Match stop-icon size */
+  line-height: 1;
+  flex-grow: 1; /* Allow icon to take up space, pushing text down */
+  display: flex;
+  align-items: center; /* Center vertically within its space */
+  justify-content: center;
+  color: white; /* Match other card icon colors */
+  padding-top: 5px; /* Match stop-icon padding */
+}
+
+/* Ensure .card-text style applies correctly */
+.card-text {
+  font-size: clamp(8px, 1.5vw, 12px); /* Match stop-card text size */
+  font-weight: bold;
+  color: white; /* Match other card text colors */
+  text-align: center;
+  padding: 0 5px 5px 5px; /* Match stop-card text padding */
+  line-height: 1.1;
+  text-shadow: 1px 1px 1px rgba(0,0,0,0.5); /* Match other card text shadow */
+  /* Remove margin-top if previously added specifically for abandon */
+  /* margin-top: 5px; */
+}
 </style>

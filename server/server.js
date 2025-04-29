@@ -186,6 +186,39 @@ io.on('connection', socket=>{
     }
   });
 
+  // --- Add New Handler: Abandon Task ---
+  socket.on('abandonTask', () => {
+    const s = getSession(socket, currentSession, 'abandonTask');
+    // Validate: Session exists, phase is 'vote', there's a current task, and the sender is the owner
+    if (!s || s.phase !== 'vote' || !s.currentTask || s.currentTask.owner !== socket.id) {
+        console.warn(`Invalid abandonTask attempt by ${socket.id} in session ${currentSession}. Phase: ${s?.phase}, Owner: ${s?.currentTask?.owner}`);
+        // Optionally emit an error back to the client if needed
+        // socket.emit('actionError', 'Cannot abandon task now.');
+        return;
+    }
+
+    const abandonedTaskTitle = s.currentTask.title; // Store title for logging
+    console.log(`Task "${abandonedTaskTitle}" abandoned by owner ${socket.id} in session ${currentSession}`);
+
+    // Mark task as abandoned (optional, could also just remove currentTask)
+    // Find the task in the main list to potentially update its status if needed later
+    const taskInList = s.tasks.find(t => t.id === s.currentTask.id);
+    if (taskInList) {
+        taskInList.points = null; // Set points to null as requested
+        taskInList.status = 'abandoned'; // Add a status for clarity
+    }
+
+    // Reset state back to lobby
+    s.phase = 'lobby';
+    s.currentTask = null; // Clear the current task being estimated
+    s.timer = null;       // Clear any active timers
+    s.reprVote = null;    // Clear any reprioritization vote state
+    Object.values(s.players).forEach(p => p.vote = null); // Clear all player votes
+
+    broadcast(currentSession); // Notify all clients of the state change
+  });
+  // --- End New Handler ---
+
   socket.on('proposeRepr', ()=>{
     const s = getSession(socket, currentSession, 'proposeRepr');
     if (!s || s.phase !== 'vote') return; // Can only propose during vote phase

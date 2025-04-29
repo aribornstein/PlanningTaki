@@ -56,6 +56,13 @@ Example:
 - **If not enough space**:
   - The task is marked as **Remaining Work** and pushed to the next sprint.
 
+### 4.2 Special Case: Abandon Task (Owner Only)
+- During the voting phase, the **task owner** has a special option:
+  - They can click the "**Abandon**" card (👑).
+- This immediately **cancels the estimation** for the current task.
+- The task's points are set to `null`, its status marked as 'abandoned', and the session returns to the **Lobby Phase** to select a new task.
+- This allows the owner to withdraw a task if they realize it's poorly defined, too large, or no longer relevant after the explanation phase.
+
 ---
 
 ## 5. Reveal Phase
@@ -252,18 +259,18 @@ To build and run the Planning Taki application using Docker:
 # 📝 TODO List
 
 ## High Priority
--   **Session Manager Role:** Assign a "Manager" role to the first user joining. The Manager handles tie-breaking and reprioritization decisions instead of the task owner. Requires server logic changes (`server.js`) and potential UI updates (`Session.vue`).
--   **Abandon Task Card (Owner Only):** Add a button for the task owner during the 'vote' phase (`Session.vue`) to abandon the current task (set points to null, clear `currentTask`, return to 'lobby'). Requires new server event (`server.js`).
--   **Unbudgeted Tasks Indicator:** Display a count/list of tasks with `points: null` next to each player's name in `Session.vue`. Requires a computed property.
+-   **Session Manager Role:** Assign a "Manager" role to the first user joining. The Manager handles tie-breaking and reprioritization decisions instead of the task owner. Requires server logic changes ([`server/server.js`](server/server.js)) and potential UI updates ([`client/src/views/Session.vue`](client/src/views/Session.vue)).
+-   **[x] Abandon Task Card (Owner Only):** Adds a Taki-style 'Abandon' card (amber with a crown icon) visible only to the task owner during the 'vote' phase ([`client/src/views/Session.vue`](client/src/views/Session.vue)). Clicking it triggers a server event ([`server/server.js`](server/server.js) via [`client/src/store.js`](client/src/store.js)) that sets the task's points to `null`, adds an 'abandoned' status, clears the `currentTask`, and returns the session to the 'lobby' phase.
+-   **Unbudgeted Tasks Indicator:** Display a count/list of tasks with `points: null` next to each player's name in [`client/src/views/Session.vue`](client/src/views/Session.vue). Requires a computed property.
 
 ## Medium Priority
--   **Reprioritization Vote Indicator:** Show a "✔️ Voted" indicator next to players who have voted during the `reprVote` phase in `Session.vue`, using `s.reprVote.voters`.
--   **Export Task List:** Add an "Export Tasks" button in `Session.vue` to generate a downloadable file (CSV/text) of Task Title, Owner Name, and Points using client-side JS.
+-   **Reprioritization Vote Indicator:** Show a "✔️ Voted" indicator next to players who have voted during the `reprVote` phase in [`client/src/views/Session.vue`](client/src/views/Session.vue), using `s.reprVote.voters`.
+-   **Export Task List:** Add an "Export Tasks" button in [`client/src/views/Session.vue`](client/src/views/Session.vue) to generate a downloadable file (CSV/text) of Task Title, Owner Name, and Points using client-side JS.
 
 ## Low Priority
--   **Edit Task Text:** Allow task owners to edit the title of their unestimated tasks in the 'lobby' phase (`Session.vue`). Requires an "Edit" button and a new socket event/handler (`server.js`).
--   **Choose Player Emoji:** Add an emoji selector in `Lobby.vue`, send it with the `join` event, store it in `server.js`, and display it next to player names in `Session.vue`.
--   **Collapsible User Task Lists:** Make the "Budgeted Tasks" list under each player collapsible/expandable in `Session.vue` using local component state.
+-   **Edit Task Text:** Allow task owners to edit the title of their unestimated tasks in the 'lobby' phase ([`client/src/views/Session.vue`](client/src/views/Session.vue)). Requires an "Edit" button and a new socket event/handler ([`server/server.js`](server/server.js)).
+-   **Choose Player Emoji:** Add an emoji selector in [`client/src/views/Lobby.vue`](client/src/views/Lobby.vue), send it with the `join` event, store it in [`server/server.js`](server/server.js), and display it next to player names in [`client/src/views/Session.vue`](client/src/views/Session.vue).
+-   **Collapsible User Task Lists:** Make the "Budgeted Tasks" list under each player collapsible/expandable in [`client/src/views/Session.vue`](client/src/views/Session.vue) using local component state.
 
 ---
 
