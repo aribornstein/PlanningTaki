@@ -266,6 +266,7 @@ To build and run the Planning Taki application using Docker:
 ## Medium Priority
 -   **Reprioritization Vote Indicator:** Show a "✔️ Voted" indicator next to players who have voted during the `reprVote` phase in [`client/src/views/Session.vue`](client/src/views/Session.vue), using `s.reprVote.voters`.
 -   **Export Task List:** Add an "Export Tasks" button in [`client/src/views/Session.vue`](client/src/views/Session.vue) to generate a downloadable file (CSV/text) of Task Title, Owner Name, and Points using client-side JS.
+-   **Invite Players (Manager Only):** Allow the Session Manager to invite others (e.g., via a shareable link or direct invite mechanism) from the lobby/session view. Requires UI elements ([`client/src/views/Session.vue`](client/src/views/Session.vue)) visible only to the manager and potentially server-side logic ([`server/server.js`](server/server.js)) for generating/handling invites.
 
 ## Low Priority
 -   **Edit Task Text:** Allow task owners to edit the title of their unestimated tasks in the 'lobby' phase ([`client/src/views/Session.vue`](client/src/views/Session.vue)). Requires an "Edit" button and a new socket event/handler ([`server/server.js`](server/server.js)).

@@ -11,6 +11,7 @@
         <li v-for="p in players" :key="p.id" :class="{ 'is-me': p.id === me?.id }">
           <div>
             👤 {{ p.name }} (Remaining: {{ p.remaining }} / Budget: {{ p.budget }})
+            <span v-if="playerUnbudgetedTaskCount[p.id] > 0" style="color: orange; font-weight: bold;"> (Unbudgeted: {{ playerUnbudgetedTaskCount[p.id] }})</span> <!-- Add this line -->
             <span v-if="s.phase === 'vote' && p.vote !== null">🗳️ Voted</span>
             <span v-if="s.phase === 'reveal' || s.phase === 'discuss'">🗳️ {{ p.vote }}</span>
             <span v-if="s.currentTask?.owner === p.id"> (Owner)</span>
@@ -83,16 +84,16 @@
          <div v-if="me?.vote === null"
               @click="proposeRepr"
               class="taki-card stop-card"
-              :style="{ background: '#ef4444' }"> <!-- Example: Red background -->
-            <div class="stop-icon">✋</div>
+              :style="{ background: '#fcd34d' }"> 
+            <div class="stop-icon">👑</div>
             <div class="card-text">Reprioritize</div> <!-- Added text -->
          </div>
          <!-- Add Abandon Task Card for Owner -->
          <div v-if="isOwner"
               @click="abandonTask"
               class="taki-card abandon-card"
-              :style="{ background: '#fcd34d' }"> <!-- Example: Amber background -->
-            <div class="abandon-icon">👑</div> <!-- Crown Icon -->
+              :style="{ background: '#ef4444' }"> 
+            <div class="abandon-icon">✋</div> <!-- Crown Icon -->
             <div class="card-text">Abandon</div> <!-- Added text -->
          </div>
        </div>
@@ -230,6 +231,28 @@ const playerBudgetedTasks = computed(() => {
   }
   return budgeted;
 });
+
+// Add computed property to count unbudgeted tasks for each player
+const playerUnbudgetedTaskCount = computed(() => {
+  const counts = {};
+  if (s.value && s.value.players) {
+    // Initialize counts for all players
+    Object.keys(s.value.players).forEach(playerId => {
+      counts[playerId] = 0;
+    });
+
+    // Count tasks with points: null for each owner
+    if (s.value.tasks) {
+      s.value.tasks.forEach(task => {
+        if (task.owner && task.points === null && counts.hasOwnProperty(task.owner)) {
+          counts[task.owner]++;
+        }
+      });
+    }
+  }
+  return counts;
+});
+
 
 const newTask = ref('');
 function addTask() {
