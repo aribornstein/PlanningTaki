@@ -292,17 +292,18 @@ function updateCountdown() {
 watch(() => s.value?.timer, updateCountdown, { immediate: true });
 watch(() => s.value?.phase, updateCountdown, { immediate: true });
 
-onMounted(() => {
-  const name = route.query.n;
-  const budget = Number(route.query.b);
-  const sessionId = route.params.id || route.query.id;
-  if (name && !isNaN(budget) && sessionId) {
-    store.join(name, budget, sessionId);
-  } else {
-    // Handle error: missing join info
-    console.error("Missing name, budget, or session ID");
-    // Optionally redirect back to lobby or show error message
-  }
+onMounted(async () => {
+    const sessionIdFromRoute = route.params.id;
+    console.log('Session.vue: Read sessionId from route:', sessionIdFromRoute); // Add log
+    const name = ref(route.query.n);
+    const budget = ref(Number(route.query.b));
+    if (name.value && !isNaN(budget.value) && sessionIdFromRoute) {
+        await store.join(sessionIdFromRoute, name.value, budget.value);
+    } else {
+        // Handle error: missing join info
+        console.error("Missing name, budget, or session ID");
+        // Optionally redirect back to lobby or show error message
+    }
 });
 
 // Cleanup timer on unmount

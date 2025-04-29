@@ -49,17 +49,22 @@ io.on('connection', socket=>{
 
   console.log(`Socket connected: ${socket.id}`);
 
-  socket.on('join', ({sessionId,name,budget})=>{
-    if (!sessionId || !name || typeof budget !== 'number') {
-        console.error(`Invalid join data from ${socket.id}:`, { sessionId, name, budget });
-        // Optionally emit error to client: socket.emit('joinError', 'Invalid join data');
+  socket.on('join', ({ sessionId, name, budget }) => {
+    console.log(`Server: Received join request for session '${sessionId}' from player '${name}' (${socket.id})`); // Add log
+    if (!sessionId) {
+        console.error(`Server: Join attempt from ${socket.id} with missing sessionId!`); // Add log
+        // Consider emitting an error back to the client
         return;
     }
-    // Use provided sessionId directly, don't rely on potentially stale currentSession
-    const s = sessions[sessionId] ?? createSession(sessionId);
-    s.players[socket.id] = { id:socket.id, name, budget,
-      remaining:budget, vote:null, disputes:2 };
-    socket.join(sessionId);
+    // Use the sessionId received from the client to find/create the session
+    const session = sessions[sessionId] ?? createSession(sessionId);
+    console.log(`Server: Joining player ${socket.id} to session room '${session.id}'`); // Add log
+    socket.join(session.id); // Join the room named after the session ID
+    // Initialize remaining points equal to the budget here
+    session.players[socket.id] = { id: socket.id, name, budget, remaining: budget, estimate: null, joinedAt: Date.now(), disputes: 2 }; // Add remaining and disputes
+
+    // Emit the updated session to all clients in the room
+    io.to(session.id).emit('sessionUpdated', session); // Emit to the correct room
     currentSession = sessionId; // Set currentSession *after* successful join/creation
     console.log(`Socket ${socket.id} (${name}) joined session ${currentSession}`);
     broadcast(currentSession);
